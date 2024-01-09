@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
 import { User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
@@ -71,7 +71,7 @@ const registerUser = asyncHandler( async (req, res) => {
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if (!avatar) {
-        throw new ApiError(400, "Avatar file is required")
+        throw new ApiError(500, "Error uploading Avatar File")
     }
    
 
@@ -93,7 +93,7 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "User registered Successfully")
+        new ApiResponse(201, createdUser, "User registered Successfully")
     )
 
 } )
@@ -293,7 +293,9 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         throw new ApiError(400, "Avatar file is missing")
     }
 
-    //TODO: delete old image - assignment
+    //DONE: delete old image - assignment
+    const oldAvatarOnCloudinary = req.user.avatar;
+    await deleteFromCloudinary(oldAvatarOnCloudinary);
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
@@ -310,7 +312,7 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
             }
         },
         {new: true}
-    ).select("-password")
+    ).select("-password -refreshToken")
 
     return res
     .status(200)
@@ -326,7 +328,10 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
         throw new ApiError(400, "Cover image file is missing")
     }
 
-    //TODO: delete old image - assignment
+    //DONE: delete old image - assignment
+    if(req.user.coverImage){
+        await deleteFromCloudinary(req.user.coverImage);
+    }
 
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
@@ -344,7 +349,7 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
             }
         },
         {new: true}
-    ).select("-password")
+    ).select("-password -refreshToken")
 
     return res
     .status(200)
