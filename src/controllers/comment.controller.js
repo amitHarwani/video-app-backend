@@ -37,6 +37,29 @@ const getCommentAggregationPipeline = (matchObject) => {
         localField: "video",
         foreignField: "_id",
         as: "video",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    fullName: 1,
+                    email: 1, 
+                    avatar: 1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields: {owner: {$first: "$owner"}}
+          }
+        ]
       },
     },
     {
