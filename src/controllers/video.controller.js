@@ -139,11 +139,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
     owner: new mongoose.Types.ObjectId(req.user._id),
   };
 
-  await Video.create(newVideo);
+  const createdVideo = await Video.create(newVideo);
 
   return res
     .status(201)
-    .json(new ApiResponse(201, newVideo, "Video Published Successfully"));
+    .json(new ApiResponse(201, createdVideo, "Video Published Successfully"));
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
