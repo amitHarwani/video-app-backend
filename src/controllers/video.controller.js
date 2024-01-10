@@ -71,6 +71,10 @@ const getAllVideos = asyncHandler(async (req, res) => {
     page,
     limit,
     sort: { [sortBy]: sortType },
+    customLabels: {
+      docs: "videos",
+      totalDocs: "totalVideos"
+    }
   });
 
   return res
@@ -205,6 +209,9 @@ const updateVideo = asyncHandler(async (req, res) => {
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
+  if(!video.owner.equals(req.user?._id)){
+    throw new ApiError(403, "You are unauthorized to edit the video");
+  }
 
   const thumbnailFile = req?.file;
   /* If thumbnail file is provided: Updating it */
@@ -240,6 +247,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
   if(!video){
     throw new ApiError(404, "Video not found");
   }
+  if(!video.owner.equals(req.user?._id)){
+    throw new ApiError(403, "You are unauthorized to edit the video");
+  }
+
   
   /* Deleting thumbail and video files from cloudinary */
   await deleteFromCloudinary(video.thumbnail);
