@@ -9,10 +9,12 @@ const createTweet = asyncHandler(async (req, res) => {
     //DONE: create tweet
     const {content} = req.body;
 
+    /* Validate if content is provided */
     if(!content){
         throw new ApiError(400, "Content is required");
     }
 
+    /* Creating a new tweet */
     const newTweet = await Tweet.create({
         content: content,
         owner: new mongoose.Types.ObjectId(req.user?._id)
@@ -25,6 +27,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
     // DONE: get user tweets
     const {userId} = req.params;
 
+    /* Find tweets where the owner is the userId passed */
     const tweets = await Tweet.find({owner: userId});
 
     return res.status(200).json(new ApiResponse(200, tweets, "Tweets fetched successfully"));
@@ -35,20 +38,24 @@ const updateTweet = asyncHandler(async (req, res) => {
     const {tweetId} = req.params;
     const {content} = req.body;
 
+    /* Validate if content is provided */
     if(!content){
         throw new ApiError(400, "Content is required");
     }
 
+    /* Validate if tweet exists */
     const tweet = await Tweet.findById(tweetId);
 
     if(!tweet){
         throw new ApiError(404, "Tweet not found, Invalid tweet id");
     }
 
+    /* Validate if the owner of the tweet is the user logged in */
     if(!tweet.owner.equals(req.user?._id)){
         throw new ApiError(403, "You are unauthorized to update this tweet");
     }
 
+    /* Updating the content of the tweet */
     tweet.content = content;
 
     await tweet.save();

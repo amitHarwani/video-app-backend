@@ -11,12 +11,14 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //DONE: toggle like on video
 
+  /* Validate if video exists */
   const video = await Video.findById(videoId);
 
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
 
+  /* Check if the user has already liked this video */
   const existingLikeOnVideo = await Like.findOne({
     video: videoId,
     likedBy: req.user?._id,
@@ -36,6 +38,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
       );
   }
 
+  /* Adding a like */
   const newLike = await Like.create({
     video: new mongoose.Types.ObjectId(videoId),
     likedBy: new mongoose.Types.ObjectId(req.user?._id),

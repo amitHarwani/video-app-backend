@@ -9,6 +9,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
   // DONE: toggle subscription
 
+  /* Subscriber is the user logged in */
   const subscriber = req.user._id;
 
   /* If user is already subscribed, delete the particular record to unsubscribe */
@@ -34,6 +35,14 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
 
+  /**
+   * Match channel
+   * Get subscribed users info from users collection
+   * Project only the subscriber object
+   * Replace root to flatten out [{subscriber: {...}}] -> to [{...}, {...}]
+   * Group and add all objects to subscribers array
+   * Add numberOfSubscribers field: Size of array
+   * */
   const subscribers = await Subscription.aggregate([
     {
       $match: {
@@ -52,7 +61,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
               fullName: 1,
               username: 1,
               email: 1,
-              avatar: 1
+              avatar: 1,
             },
           },
         ],
@@ -109,6 +118,14 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 const getSubscribedChannels = asyncHandler(async (req, res) => {
   const { subscriberId } = req.params;
 
+  /**
+   * Match subscriber Id
+   * Get channels subscribed to  users collection
+   * Project only the channel object
+   * Replace root to flatten out [{channel: {...}}] -> to [{...}, {...}]
+   * Group and add all objects to channels array
+   * Add numberOfChannelsSubscribedTo field: Size of channels array
+   * */
   const channelsSubscribedTo = await Subscription.aggregate([
     {
       $match: {
@@ -127,7 +144,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
               fullName: 1,
               username: 1,
               email: 1,
-              avatar: 1
+              avatar: 1,
             },
           },
         ],
@@ -170,16 +187,14 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
   ]);
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      channelsSubscribedTo,
-      "Channels Subscribed To Fetched Successfully"
-    )
-  );
-
-
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channelsSubscribedTo,
+        "Channels Subscribed To Fetched Successfully"
+      )
+    );
 });
 
 export { toggleSubscription, getUserChannelSubscribers, getSubscribedChannels };

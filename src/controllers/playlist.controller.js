@@ -10,7 +10,9 @@ const getPlaylistAggregationPipeline = (matchObject) => {
   /**
    * Gets the playlist according to the matchObject criteria passed
    * Populates the owner field with user info
-   * Populates video field with video info and the owner field in vide with the user info
+   * Unwind to flatten out videos array to separate documents
+   * Populate video info, and videos owner info by lookup
+   * Group back by _id, add videos to an array, and other fields
    */
   return [
     {
@@ -100,14 +102,18 @@ const getPlaylistAggregationPipeline = (matchObject) => {
     },
   ];
 };
+
 const createPlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
 
   //DONE: create playlist
+
+  /* Validate if name and description are provided */
   if (!name || !description) {
     throw new ApiError(400, "Name and description are required");
   }
 
+  /* Creating a new playlist */
   const newPlaylist = {
     name,
     description,
@@ -127,6 +133,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   //DONE: get user playlists
 
+  /* Use the aggregationPipeline function to obtain the aggregation pipeline, Querying by owner */
   const playlistOfUser = await Playlist.aggregate(
     getPlaylistAggregationPipeline({
       owner: new mongoose.Types.ObjectId(userId),
@@ -158,6 +165,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
 
+  /* Validate if playlist exists */
   const playlist = await Playlist.findById(playlistId);
 
   if (!playlist) {
@@ -169,16 +177,19 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are unauthorized to edit the playlist");
   }
 
+  /* Validate if video exists */
   const video = await Video.findById(videoId);
 
   if (!video) {
     throw new ApiError(404, "Video Not Found");
   }
 
+  /* Validate if video is already a part of the playlist */
   if (playlist.videos.includes(videoId)) {
     throw new ApiError(400, "Video is already a part of the playlist");
   }
 
+  /* Add video to playlist */
   playlist.videos.push(new mongoose.Types.ObjectId(videoId));
 
   await playlist.save();
@@ -198,6 +209,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
   // DONE: remove video from playlist
 
+  /* Validate if playlist exists */
   const playlist = await Playlist.findById(playlistId);
   if (!playlist) {
     throw new ApiError(404, "Playlist not found");
@@ -208,11 +220,13 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are unauthorized to edit the playlist");
   }
 
+  /* Validate if video exists */
   const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
 
+  /* Validate if video exists in the playlist */
   const videoIndexInPlaylist = playlist.videos.findIndex((video) =>
     video.equals(videoId)
   );
@@ -220,6 +234,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video is not in the playlist");
   }
 
+  /* Remove the video from the playlist array */
   playlist.videos.splice(videoIndexInPlaylist, 1);
 
   await playlist.save();
@@ -232,26 +247,33 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, updatedPlaylist[0], "Video removed from playlist"));
+    .json(
+      new ApiResponse(200, updatedPlaylist[0], "Video removed from playlist")
+    );
 });
 
 const deletePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
   // DONE: delete playlist
 
+  /* Validate if playlist exists */
   const playlist = await Playlist.findById(playlistId);
 
-  if(!playlist){
+  if (!playlist) {
     throw new ApiError(404, "Playlist not found");
   }
-  if(!playlist.owner.equals(req.user?._id)){
-    throw new ApiError(403, "You are unauthorized to edit the playlist")
+
+  /* Checking if user is the owner of the playlist */
+  if (!playlist.owner.equals(req.user?._id)) {
+    throw new ApiError(403, "You are unauthorized to edit the playlist");
   }
 
+  /* Delete the playlist document */
   await Playlist.findByIdAndDelete(playlistId);
 
-  return res.status(200).json(new ApiResponse(200, {}, "Playlist deleted successfully"));
-
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Playlist deleted successfully"));
 });
 
 const updatePlaylist = asyncHandler(async (req, res) => {
@@ -259,20 +281,24 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
   //DONE: update playlist
 
+  /* Validate if name and description are provided */
   if (!name || !description) {
     throw new ApiError(400, "Name and description are required");
   }
 
+  /* Validate if playlist exists */
   const playlist = await Playlist.findById(playlistId);
 
   if (!playlist) {
     throw new ApiError(404, "Playlist not found");
   }
 
+  /* Checking if user is the owner of the playlist */
   if (!playlist.owner.equals(req.user?._id)) {
     throw new ApiError(403, "You are unauthorized to edit the playlist");
   }
 
+  /* Updating the name and description of the playlist */
   playlist.name = name;
   playlist.description = description;
 

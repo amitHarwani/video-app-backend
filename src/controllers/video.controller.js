@@ -21,15 +21,22 @@ const getAllVideos = asyncHandler(async (req, res) => {
   limit = Number(limit);
 
   /* Validations*/
+  /* Page number and limit type validation */
   if (isNaN(page) || isNaN(limit)) {
     throw new ApiError(400, "Invalid page & limit passed");
   }
+
+  /* Check if user id is provided */
   if (!userId) {
     throw new ApiError(400, "User Id is required");
   }
+
+  /* If sort type exists then Check if valid sort type is provided */
   if (sortType && !ACCEPTED_SORT_TYPES.includes(sortType)) {
     throw new ApiError(400, "Invalid Sort Type");
   }
+
+  /* Check if sort by field is provided if sort type is provided */
   if (sortType && !sortBy) {
     throw new ApiError(400, "Provide Sort By Field, Or exclude sortType");
   }
@@ -98,10 +105,12 @@ const publishAVideo = asyncHandler(async (req, res) => {
   const videoFileLocalPath = videoFile?.path;
   const thumbnailLocalPath = thumbnailFile?.path;
 
+  /* Video and Thumbnail is required */
   if (!videoFileLocalPath || !thumbnailLocalPath) {
     throw new ApiError(400, "Video File And Thumbnail are Required");
   }
 
+  /* File type validation */
   if (!videoFile?.mimetype?.includes("video")) {
     throw new ApiError(400, "Invalid video file format");
   }
@@ -124,6 +133,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Error while uploading video");
   }
 
+  /* Uploading thumbnail on cloudinary */
   const thumbnailOnCloudinary = await uploadOnCloudinary(thumbnailLocalPath);
 
   /* Failed to upload thumbnail on cloudinary */
@@ -143,6 +153,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     owner: new mongoose.Types.ObjectId(req.user._id),
   };
 
+  /* Saving the video document */
   const createdVideo = await Video.create(newVideo);
 
   return res
@@ -209,6 +220,8 @@ const updateVideo = asyncHandler(async (req, res) => {
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
+
+  /* Validating if the owner of the video is the user making the request */
   if(!video.owner.equals(req.user?._id)){
     throw new ApiError(403, "You are unauthorized to edit the video");
   }
@@ -225,12 +238,15 @@ const updateVideo = asyncHandler(async (req, res) => {
     /* Deleting current thumbnail file */
     await deleteFromCloudinary(video.thumbnail);
 
+    /* Updating url in the video object */
     video.thumbnail = thumbnailOnCloudinary.secure_url;
   }
 
+  /* Updating title and description */
   video.title = title;
   video.description = description;
 
+  /* Saving the document */
   await video.save();
 
   return res
@@ -240,13 +256,16 @@ const updateVideo = asyncHandler(async (req, res) => {
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  //TODO: delete video
+  //DONE: delete video
 
+  /* Validate if video exists */
   const video = await Video.findById(videoId);
 
   if(!video){
     throw new ApiError(404, "Video not found");
   }
+
+  /* Validating if the owner of the video is the user making the request */
   if(!video.owner.equals(req.user?._id)){
     throw new ApiError(403, "You are unauthorized to edit the video");
   }
@@ -256,6 +275,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
   await deleteFromCloudinary(video.thumbnail);
   await deleteFromCloudinary(video.videoFile, "video");
 
+  /* Deleting the video document from DB */
   const response = await Video.findByIdAndDelete(videoId);
 
   return res
@@ -266,14 +286,19 @@ const deleteVideo = asyncHandler(async (req, res) => {
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
 
+  /* Validate if video exists */
   const video = await Video.findById(videoId);
 
   if(!video){
     throw new ApiError(404, "Video Not Found");
   }
+
+  /* toggle isPublished status */
   video.isPublished = !video.isPublished;
 
+  /* Saving to DB */
   await video.save();
+
   return res.status(200).json(new ApiResponse(200, video, `Publish status toggled to ${video.isPublished}`));
 });
 
@@ -282,6 +307,7 @@ const viewVideo = asyncHandler(async (req, res) => {
 
   const {videoId} = req.params;
 
+  /* Validate if video exists */
   const video = await Video.findById(videoId);
 
   if(!video){
@@ -291,11 +317,13 @@ const viewVideo = asyncHandler(async (req, res) => {
   /* Incrementing views */
   video.views++;
 
+  /* User from DB, who watched the video */
   const videoWatchedBy = await User.findById(req.user?._id);
   
   /* Adding video to users watch history */
   videoWatchedBy.watchHistory.push(new mongoose.Types.ObjectId(videoId));
 
+  /* Saving to DB */
   await video.save();
   await videoWatchedBy.save();
 
