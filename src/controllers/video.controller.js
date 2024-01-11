@@ -277,6 +277,31 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, video, `Publish status toggled to ${video.isPublished}`));
 });
 
+/* To trigger a video view */
+const viewVideo = asyncHandler(async (req, res) => {
+
+  const {videoId} = req.params;
+
+  const video = await Video.findById(videoId);
+
+  if(!video){
+    throw new ApiError(404, "Video Not Found");
+  }
+
+  /* Incrementing views */
+  video.views++;
+
+  const videoWatchedBy = await User.findById(req.user?._id);
+  
+  /* Adding video to users watch history */
+  videoWatchedBy.watchHistory.push(new mongoose.Types.ObjectId(videoId));
+
+  await video.save();
+  await videoWatchedBy.save();
+
+  return res.status(200).json(new ApiResponse(200, {}, "Video view added"));
+})
+
 export {
   getAllVideos,
   publishAVideo,
@@ -284,4 +309,5 @@ export {
   updateVideo,
   deleteVideo,
   togglePublishStatus,
+  viewVideo
 };
